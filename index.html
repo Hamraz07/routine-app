@@ -64,31 +64,25 @@ function render(){const arr=activities.filter(x=>x.day===selected).sort((a,b)=>m
  document.querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{selected=b.dataset.day;render()});add.onclick=()=>activityModal();profile.onclick=profileModal;reset.onclick=()=>{if(confirm('Reset this local routine?')){activities=[];save();render()}};ask.onclick=()=>aiCommand(command.value);chatgpt.onclick=chatGPTModal;importChat.onclick=importChatGPTModal;document.querySelectorAll('.check').forEach(c=>c.onchange=()=>{let x=activities.find(a=>a.id===c.dataset.id);x.completed=c.checked;save();render()});document.querySelectorAll('.edit').forEach(b=>b.onclick=()=>activityModal(activities.find(a=>a.id===b.dataset.id)));document.querySelectorAll('.event').forEach(el=>{el.ondragstart=()=>dragId=el.dataset.id;el.ondragover=e=>{e.preventDefault();el.classList.add('dragover')};el.ondragleave=()=>el.classList.remove('dragover');el.ondrop=e=>{e.preventDefault();el.classList.remove('dragover');swap(dragId,el.dataset.id)}})}
 
 function chatGPTPrompt(){
- return `You are the My Routine planning assistant. Help me create a realistic, conflict-free weekly routine.
+ return `You are the My Routine planning assistant.
 
-First ask me any important questions you need. Consider my fixed commitments, sleep/recovery, meals, travel, preferences, recurring activities, goals and priorities. Never invent fixed commitments. Rearrange flexible activities when needed.
+Ask me questions if important information is missing. Then create a realistic, conflict-free Monday-Sunday routine using my fixed commitments, sleep, meals, travel, goals and preferences. Never invent fixed commitments. Rearrange flexible activities when needed.
 
-When you have enough information, create a complete Monday-Sunday routine. IMPORTANT: do not return an empty activities array. Include every activity needed for the routine, including sleep, fixed commitments, study/work, meals, exercise and reasonable free time when appropriate. Do not create overlapping activities. Overnight activities such as 20:00-08:00 are allowed. Use 24-hour HH:MM times; use 00:00, never 24:00. Do not create an activity longer than 18 hours unless the user explicitly says it is a genuine all-day fixed commitment.
+When finished, output ONLY one JSON code block. It MUST contain real activities (never an empty array) and every activity must have: name, day, start, end, type, is_fixed. Use Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday. Use 24-hour HH:MM times. No overlaps. Overnight shifts are allowed. Keep sleep and fixed commitments protected.
 
-At the very end, output ONLY this JSON inside one json code block:
-{
-  "name": "${String(data.name).replace(/"/g,'\\"')}",
-  "activities": [
-    {"name":"College","day":"Monday","start":"08:00","end":"16:00","type":"College","is_fixed":true},
-    {"name":"Gym","day":"Monday","start":"17:00","end":"18:00","type":"Fitness","is_fixed":false}
-  ]
-}
+Format:
+{"name":"${String(data.name).replace(/"/g,'\\"')}","activities":[{"name":"College","day":"Monday","start":"08:00","end":"16:00","type":"College","is_fixed":true}]}
 
-Every activity must have: name, day, start, end, type, is_fixed. Days must be Monday-Sunday. Do not add explanations outside the JSON once the final routine is ready.
-
-My name is ${String(data.name)}. My current My Routine activities are: ${JSON.stringify(activities)}
-
-Now ask me for my requirements and build my complete weekly routine.`;
+My name is ${String(data.name)}. Build my complete weekly routine from what I tell you next.`;
 }
 function chatGPTModal(){
  const prompt=chatGPTPrompt();
- openModal('Create your routine with ChatGPT',`<div class="notice">This is the <b>free test method</b>. ChatGPT does the natural-language planning; My Routine imports and validates the result. No OpenAI API key or payment is required.</div><p class="hint"><b>On phone:</b> tap Copy prompt, then Open ChatGPT. In ChatGPT, paste the prompt and describe your life. If the send button is missing, log in/sign up or use the ChatGPT app. When ChatGPT finishes, copy only its final JSON and return here.</p><textarea id="chatPrompt" class="input" style="min-height:220px">${esc(prompt)}</textarea><div class="actions" style="justify-content:flex-start;flex-wrap:wrap"><button class="btn primary" id="copyPrompt">📋 Copy prompt</button><button class="btn" id="openChat">Open ChatGPT</button></div>`,()=>{modal.classList.remove('show')},'Close');
- setTimeout(()=>{copyPrompt.onclick=async()=>{try{await navigator.clipboard.writeText(prompt);toast('Prompt copied. Now open ChatGPT and paste it.')}catch{chatPrompt.select();document.execCommand('copy');toast('Prompt copied.')}};openChat.onclick=()=>{try{navigator.clipboard.writeText(prompt)}catch{} window.open('https://chatgpt.com/','_blank','noopener,noreferrer')};},0);
+ openModal('Create your routine with ChatGPT',`<div class="notice">This is the <b>free test method</b>. ChatGPT does the natural-language planning; My Routine imports and validates the result. No OpenAI API key or payment is required.</div><p class="hint"><b>Phone:</b> use <b>Copy prompt</b>, then open ChatGPT and paste it into a new chat. If the ChatGPT website's send button is not visible, use the ChatGPT app or log in on the web. ChatGPT supports free use on the web in supported regions.</p><textarea id="chatPrompt" class="input" style="min-height:170px">${esc(prompt)}</textarea><div class="actions" style="justify-content:flex-start;flex-wrap:wrap"><button class="btn primary" id="copyPrompt">📋 Copy prompt</button><button class="btn" id="shareChat">📤 Share to ChatGPT</button><button class="btn" id="openChat">Open ChatGPT</button></div>`,()=>{modal.classList.remove('show')},'Close');
+ setTimeout(()=>{
+   copyPrompt.onclick=async()=>{try{await navigator.clipboard.writeText(prompt);toast('Prompt copied. Open ChatGPT and paste it.')}catch{chatPrompt.select();document.execCommand('copy');toast('Prompt copied.')}};
+   shareChat.onclick=async()=>{if(navigator.share){try{await navigator.share({title:'My Routine',text:prompt});}catch(e){if(e.name!=='AbortError')toast('Use Copy prompt instead.')}}else{try{await navigator.clipboard.writeText(prompt);toast('Prompt copied. Open ChatGPT and paste it.')}catch{toast('Use Copy prompt instead.')}}};
+   openChat.onclick=()=>{window.open('https://chatgpt.com/','_blank','noopener,noreferrer')};
+ },0);
 }
 function extractRoutineJSON(raw){
  let t=String(raw||'').trim();

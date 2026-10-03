@@ -64,29 +64,31 @@ function render(){const arr=activities.filter(x=>x.day===selected).sort((a,b)=>m
  document.querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{selected=b.dataset.day;render()});add.onclick=()=>activityModal();profile.onclick=profileModal;reset.onclick=()=>{if(confirm('Reset this local routine?')){activities=[];save();render()}};ask.onclick=()=>aiCommand(command.value);chatgpt.onclick=chatGPTModal;importChat.onclick=importChatGPTModal;document.querySelectorAll('.check').forEach(c=>c.onchange=()=>{let x=activities.find(a=>a.id===c.dataset.id);x.completed=c.checked;save();render()});document.querySelectorAll('.edit').forEach(b=>b.onclick=()=>activityModal(activities.find(a=>a.id===b.dataset.id)));document.querySelectorAll('.event').forEach(el=>{el.ondragstart=()=>dragId=el.dataset.id;el.ondragover=e=>{e.preventDefault();el.classList.add('dragover')};el.ondragleave=()=>el.classList.remove('dragover');el.ondrop=e=>{e.preventDefault();el.classList.remove('dragover');swap(dragId,el.dataset.id)}})}
 
 function chatGPTPrompt(){
- return `You are the My Routine planning assistant. Create a realistic, conflict-free weekly routine for the user. Ask follow-up questions if important information is missing. Respect fixed commitments, sleep/recovery, meals, travel time, preferences, recurring activities, and the user's priorities. Do not invent fixed commitments. You may rearrange flexible activities to make the week fit.
+ return `You are the My Routine planning assistant. Help me create a realistic, conflict-free weekly routine.
 
-When you are finished, output ONLY valid JSON inside a single json code block using exactly this shape:
+First ask me any important questions you need. Consider my fixed commitments, sleep/recovery, meals, travel, preferences, recurring activities, goals and priorities. Never invent fixed commitments. Rearrange flexible activities when needed.
+
+When you have enough information, create a complete Monday-Sunday routine. IMPORTANT: do not return an empty activities array. Include every activity needed for the routine, including sleep, fixed commitments, study/work, meals, exercise and reasonable free time when appropriate. Do not create overlapping activities. Overnight activities such as 20:00-08:00 are allowed. Use 24-hour HH:MM times; use 00:00, never 24:00. Do not create an activity longer than 18 hours unless the user explicitly says it is a genuine all-day fixed commitment.
+
+At the very end, output ONLY this JSON inside one json code block:
 {
   "name": "${String(data.name).replace(/"/g,'\\"')}",
   "activities": [
-    {"name":"College","day":"Monday","start":"08:00","end":"16:00","type":"Work","is_fixed":true},
-    {"name":"Gym","day":"Monday","start":"17:00","end":"18:00","type":"Health","is_fixed":false}
+    {"name":"College","day":"Monday","start":"08:00","end":"16:00","type":"College","is_fixed":true},
+    {"name":"Gym","day":"Monday","start":"17:00","end":"18:00","type":"Fitness","is_fixed":false}
   ]
 }
 
-Rules: day must be Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, or Sunday. Time must be 24-hour HH:MM. Each activity must have a meaningful name and type. Keep the number of activities reasonable. Do not overlap activities. Overnight activities are allowed (for example 20:00 to 08:00).
+Every activity must have: name, day, start, end, type, is_fixed. Days must be Monday-Sunday. Do not add explanations outside the JSON once the final routine is ready.
 
-The user may have an existing routine below. Preserve useful existing activities unless the user asks to change them. Never use 24:00; use 00:00 for midnight. Do not create any activity longer than 18 hours unless it is a genuinely fixed all-day commitment from the user. Avoid all-day commitments unless the user explicitly says something occupies the entire day.
-Existing routine:
-${JSON.stringify(activities,null,2)}
+My name is ${String(data.name)}. My current My Routine activities are: ${JSON.stringify(activities)}
 
-Now ask the user for their routine requirements and then produce the final JSON only after you have enough information.`;
+Now ask me for my requirements and build my complete weekly routine.`;
 }
 function chatGPTModal(){
  const prompt=chatGPTPrompt();
- openModal('Create your routine with ChatGPT',`<div class="notice">This is the <b>free test method</b>. ChatGPT does the natural-language planning; My Routine then imports and validates the result. You do not need an OpenAI API key.</div><p class="hint">1. Copy the prompt below. 2. Open ChatGPT. 3. Paste the prompt and describe your life, commitments and goals. 4. Copy the final JSON it gives you. 5. Return here and choose “Import ChatGPT routine”.</p><textarea id="chatPrompt" class="input" style="min-height:300px">${esc(prompt)}</textarea><div class="actions" style="justify-content:flex-start"><button class="btn primary" id="copyPrompt">Copy prompt</button><button class="btn" id="openChat">Open ChatGPT</button></div>`,()=>{modal.classList.remove('show')},'Close');
- setTimeout(()=>{copyPrompt.onclick=async()=>{try{await navigator.clipboard.writeText(prompt);toast('Prompt copied. Open ChatGPT and paste it.')}catch{chatPrompt.select();document.execCommand('copy');toast('Prompt copied.')}};openChat.onclick=()=>window.open('https://chatgpt.com/','_blank','noopener,noreferrer')},0);
+ openModal('Create your routine with ChatGPT',`<div class="notice">This is the <b>free test method</b>. ChatGPT does the natural-language planning; My Routine imports and validates the result. No OpenAI API key or payment is required.</div><p class="hint"><b>On phone:</b> tap Copy prompt, then Open ChatGPT. In ChatGPT, paste the prompt and describe your life. If the send button is missing, log in/sign up or use the ChatGPT app. When ChatGPT finishes, copy only its final JSON and return here.</p><textarea id="chatPrompt" class="input" style="min-height:220px">${esc(prompt)}</textarea><div class="actions" style="justify-content:flex-start;flex-wrap:wrap"><button class="btn primary" id="copyPrompt">📋 Copy prompt</button><button class="btn" id="openChat">Open ChatGPT</button></div>`,()=>{modal.classList.remove('show')},'Close');
+ setTimeout(()=>{copyPrompt.onclick=async()=>{try{await navigator.clipboard.writeText(prompt);toast('Prompt copied. Now open ChatGPT and paste it.')}catch{chatPrompt.select();document.execCommand('copy');toast('Prompt copied.')}};openChat.onclick=()=>{try{navigator.clipboard.writeText(prompt)}catch{} window.open('https://chatgpt.com/','_blank','noopener,noreferrer')};},0);
 }
 function extractRoutineJSON(raw){
  let t=String(raw||'').trim();
